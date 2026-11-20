@@ -10,9 +10,7 @@ Which vendors earn the most, where is purchase money concentrated, and which ven
 
 ## Dataset
 
-Wine and spirits distributor data covering vendor purchases, sales and invoices: [N] vendors and about 321.90M in total purchase spend, with 129.72M gross profit (28.72% overall margin).
-
-[Dataset source -- add name and link here]
+Bibitor LLC, a fictional wine and spirits retail company with about 80 stores, used in accounting and data-analytics case studies. The data includes purchases, sales, inventory, prices and vendor invoices.
 
 ## Methodology
 
@@ -44,6 +42,7 @@ Wine and spirits distributor data covering vendor purchases, sales and invoices:
 * Margin looks inflated when a vendor sells more than it bought in the period (one vendor had a stock turnover of about 59), so only vendors with balanced turnover were treated as reliable.
 * The data has no date field, so monthly and quarterly vendor trends were not analysed.
 * The data cannot show whether demand exists to sell more from the growth vendors.
+* Synthetic dataset, so real-world factors such as store operations and supplier contracts aren’t captured.
 
 ## Project Files
 
