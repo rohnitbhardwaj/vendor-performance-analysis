@@ -25,7 +25,7 @@ FROM
     FROM CT
 )t;
 
-=============================================================================
+-- =============================================================================
 
 -- Analyze vendor purchase contribution and cumulative spending percentage
 WITH CT AS(
@@ -52,7 +52,7 @@ FROM
     FROM CT
 )t;
 
-=============================================================================
+-- =============================================================================
 
 -- Analyze average unit cost across order sizes to identify potential bulk purchase discounts
 WITH Bucketed AS (
@@ -74,8 +74,63 @@ SELECT
 FROM Bucketed
 GROUP BY OrderSize
 ORDER BY OrderSize;
+)T
 
-=============================================================================
+-- =============================================================================
+
+-- Comparing small and large order unit costs across products to identify potential bulk purchasing discounts.
+
+
+-- Divide purchase records into three quantity groups for each product and vendor
+WITH Lines AS (
+    SELECT
+        Brand,
+        VendorNumber,
+        Quantity,
+        Dollars,
+        NTILE(3) OVER (PARTITION BY Brand, VendorNumber ORDER BY Quantity) AS Grp
+    FROM purchases
+    WHERE Quantity > 0
+),
+
+-- Calculate total product spending and unit costs for small and large orders
+PerProduct AS (
+    SELECT
+        Brand,
+        VendorNumber,
+        SUM(Dollars) AS ProductSpend,
+
+        -- Calculate weighted average unit cost for small orders
+        SUM(CASE WHEN Grp = 1 THEN Dollars END) * 1.0
+            / NULLIF(SUM(CASE WHEN Grp = 1 THEN Quantity END), 0) AS SmallUnitCost,
+
+        -- Calculate weighted average unit cost for large orders
+        SUM(CASE WHEN Grp = 3 THEN Dollars END) * 1.0
+            / NULLIF(SUM(CASE WHEN Grp = 3 THEN Quantity END), 0) AS LargeUnitCost
+
+    FROM Lines
+    GROUP BY Brand, VendorNumber
+
+    -- Retain products with at least 30 purchase records
+    HAVING COUNT(*) >= 30
+)
+
+-- Compare bulk and small-order costs across products
+SELECT
+    COUNT(*) AS Products,
+    SUM(CASE WHEN LargeUnitCost < SmallUnitCost THEN 1 ELSE 0 END) AS LargeCheaper,
+    SUM(CASE WHEN LargeUnitCost = SmallUnitCost THEN 1 ELSE 0 END) AS SamePrice,
+
+    -- Calculate spend-weighted percentage difference in unit costs
+    ROUND(SUM(ProductSpend * (SmallUnitCost - LargeUnitCost) / SmallUnitCost)
+          * 100.0 / SUM(ProductSpend), 2) AS WeightedPctDiff
+
+FROM PerProduct
+
+-- Exclude invalid or unavailable unit cost comparisons
+WHERE SmallUnitCost > 0 AND LargeUnitCost IS NOT NULL;
+
+-- =============================================================================
 
 -- Analyze inventory turnover, sales efficiency and estimated unsold inventory value
 SELECT
@@ -92,7 +147,7 @@ FROM CleanVendorSummary
 GROUP BY VendorNumber, VendorName
 ORDER BY UnsoldInventoryValue DESC;
 
-=============================================================================
+-- =============================================================================
 
 -- Compare vendor profit margins and identify high-margin vendors with growth potential
 WITH CT AS (
@@ -116,3 +171,8 @@ SELECT TOP 10
      FROM CleanVendorSummary) AS CompanyMargin
 FROM CT
 ORDER BY TotalProfit DESC;
+
+-- =============================================================================
+
+
+
